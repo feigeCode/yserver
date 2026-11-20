@@ -199,6 +199,68 @@ fn listen_tcp_binds_ipv4_display_port_after_loading_shared_auth() {
     );
 }
 
+#[test]
+fn listen_ipv4_loopback_binds_no_wildcard_or_ipv6_socket() {
+    let mut fixture = Fixture::new();
+    fixture.write_authority();
+    let opts = fixture.options(&[
+        "--listen",
+        "127.0.0.1",
+        "-auth",
+        fixture.auth_path().to_str().unwrap(),
+    ]);
+    let auth = AuthState::new(opts.auth_file.clone());
+    let listeners = fixture.bind(&opts, &auth).unwrap();
+    assert_eq!(listeners.len(), 2, "Unix plus exactly one TCP listener");
+    let Listener::Tcp(tcp) = &listeners[1] else {
+        panic!("missing TCP listener")
+    };
+    assert_eq!(tcp.local_addr().unwrap(), fixture.address());
+
+    let client = TcpStream::connect(fixture.address()).unwrap();
+    let (_, peer) = listeners[1].accept().unwrap();
+    assert_eq!(peer, Some(client.local_addr().unwrap()));
+    if has_ipv6_loopback() {
+        assert_eq!(
+            TcpStream::connect(fixture.address_v6()).unwrap_err().kind(),
+            io::ErrorKind::ConnectionRefused,
+            "an IPv4-only sidecar must not also expose [::1]"
+        );
+    }
+}
+
+#[test]
+fn listen_ipv6_loopback_binds_no_wildcard_or_ipv4_socket() {
+    if !has_ipv6_loopback() {
+        return;
+    }
+    let mut fixture = Fixture::new();
+    fixture.write_authority();
+    let opts = fixture.options(&[
+        "--listen",
+        "::1",
+        "-auth",
+        fixture.auth_path().to_str().unwrap(),
+    ]);
+    let auth = AuthState::new(opts.auth_file.clone());
+    let listeners = fixture.bind(&opts, &auth).unwrap();
+    assert_eq!(listeners.len(), 2, "Unix plus exactly one TCP listener");
+    let Listener::Tcp(tcp) = &listeners[1] else {
+        panic!("missing TCP listener")
+    };
+    assert_eq!(tcp.local_addr().unwrap(), fixture.address_v6());
+    assert!(socket2::SockRef::from(tcp).only_v6().unwrap());
+    assert_eq!(
+        TcpStream::connect(fixture.address()).unwrap_err().kind(),
+        io::ErrorKind::ConnectionRefused,
+        "an IPv6-only sidecar must not also expose 127.0.0.1"
+    );
+
+    let client = TcpStream::connect(fixture.address_v6()).unwrap();
+    let (_, peer) = listeners[1].accept().unwrap();
+    assert_eq!(peer, Some(client.local_addr().unwrap()));
+}
+
 /// xtrans `MakeAllCOTSServerListeners`: `EADDRINUSE` on any TCP listener is
 /// "server already running" and fails the whole bind, IPv6 included.
 #[test]

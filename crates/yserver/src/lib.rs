@@ -257,7 +257,11 @@ fn bind_client_listeners(
         auth.require_tcp_auth_at_startup()
             .map_err(io::Error::other)?;
         let port = launch::tcp_port(display).map_err(io::Error::other)?;
-        listeners.extend(bind_tcp_listeners(port)?.into_iter().map(Listener::Tcp));
+        listeners.extend(
+            bind_tcp_listeners(port, opts.tcp_listen_address)?
+                .into_iter()
+                .map(Listener::Tcp),
+        );
     }
     Ok(listeners)
 }
@@ -277,7 +281,7 @@ fn bind_client_listeners(
     auth.require_tcp_auth_at_startup()
         .map_err(io::Error::other)?;
     let port = launch::tcp_port(display).map_err(io::Error::other)?;
-    bind_tcp_listeners(port)?
+    bind_tcp_listeners(port, opts.tcp_listen_address)?
         .into_iter()
         .map(yserver_core::transport::Listener::tcp)
         .collect()
@@ -289,20 +293,32 @@ fn bind_client_listeners(
 /// `Transport` would buy no meaningful size win — so only the ABILITY to
 /// create the listeners is gated here.
 ///
-/// `0.0.0.0:port`, then `[::]:port` with `IPV6_V6ONLY` as xtrans sets it
-/// (`Xtranssock.c` `SocketOpen`), so IPv4 peers keep plain IPv4 addresses.
-/// Like xtrans `MakeAllCOTSServerListeners`, `EADDRINUSE` on either is
-/// "server already running" and fatal; any other IPv6 failure (no IPv6 in
-/// the kernel) leaves an IPv4-only server, Xorg's default `PartialNetwork`.
+/// With no explicit address, bind `0.0.0.0:port`, then `[::]:port` with
+/// `IPV6_V6ONLY` as xtrans sets it (`Xtranssock.c` `SocketOpen`), so IPv4
+/// peers keep plain IPv4 addresses. `--listen IP` instead binds exactly one
+/// address, which lets a sidecar expose no non-loopback listener at all.
+/// Like xtrans `MakeAllCOTSServerListeners`, `EADDRINUSE` on either wildcard
+/// listener is "server already running" and fatal; any other IPv6 failure (no
+/// IPv6 in the kernel) leaves an IPv4-only server, Xorg's `PartialNetwork`.
 #[cfg(tcp_transport)]
-fn bind_tcp_listeners(port: u16) -> io::Result<Vec<std::net::TcpListener>> {
+fn bind_tcp_listeners(
+    port: u16,
+    address: Option<std::net::IpAddr>,
+) -> io::Result<Vec<std::net::TcpListener>> {
     use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 
-    let v4 = SocketAddr::from((Ipv4Addr::UNSPECIFIED, port));
-    let v6 = SocketAddr::from((Ipv6Addr::UNSPECIFIED, port));
     let cannot = |addr: SocketAddr, err: io::Error| {
         io::Error::new(err.kind(), format!("cannot listen on TCP {addr}: {err}"))
     };
+    if let Some(address) = address {
+        let addr = SocketAddr::new(address, port);
+        let listener = bind_tcp_listener(addr).map_err(|err| cannot(addr, err))?;
+        log::info!("yserver: listening on TCP {addr}");
+        return Ok(vec![listener]);
+    }
+
+    let v4 = SocketAddr::from((Ipv4Addr::UNSPECIFIED, port));
+    let v6 = SocketAddr::from((Ipv6Addr::UNSPECIFIED, port));
     let mut listeners = vec![bind_tcp_listener(v4).map_err(|err| cannot(v4, err))?];
     match bind_tcp_listener(v6) {
         Ok(listener) => {
@@ -342,7 +358,10 @@ fn bind_tcp_listener(addr: std::net::SocketAddr) -> io::Result<std::net::TcpList
 /// touched. This is a second line of defence only, mirroring
 /// `build_xdmcp_service`'s feature-off twin above.
 #[cfg(not(tcp_transport))]
-fn bind_tcp_listeners(_port: u16) -> io::Result<Vec<std::net::TcpListener>> {
+fn bind_tcp_listeners(
+    _port: u16,
+    _address: Option<std::net::IpAddr>,
+) -> io::Result<Vec<std::net::TcpListener>> {
     Err(io::Error::other(
         "this yserver was built without TCP support: -listen tcp needs the \
          `tcp-transport` build feature",

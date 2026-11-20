@@ -25,7 +25,7 @@ fn main() -> ExitCode {
             eprintln!("yserver: {err}");
             eprintln!(
                 "usage: yserver [:N | N] [vtN] [-seat NAME] [-auth FILE] \
-                 [-displayfd N] [-nolisten PROTO] [-novtswitch] [--headless] [--version]"
+                 [-displayfd N] [-nolisten PROTO] [--listen IP] [-novtswitch] [--headless] [--version]"
             );
             #[cfg(target_os = "macos")]
             eprintln!("       macOS: [--rootless | --rooted] [--geometry WxH] [--scale auto|1|2]");

@@ -329,10 +329,19 @@ has it:
 yserver :7 -auth /path/to/authority -listen tcp
 ```
 
-The port is 6000 plus the display number, and the server binds `0.0.0.0` —
-every interface, not only loopback. `-listen tcp` refuses to start without a
-`-auth` file containing a usable MIT-MAGIC-COOKIE-1, because the alternative
-would be an unauthenticated X server on the network.
+The port is 6000 plus the display number. By default the server binds
+`0.0.0.0` and `[::]` — every interface, not only loopback. For a local sidecar,
+bind exactly one loopback address instead (this also enables TCP on Unix):
+
+```sh
+yserver :7 -auth /path/to/authority --listen 127.0.0.1
+```
+
+`--listen ::1` selects IPv6-only loopback. An explicit address creates only
+that one listener; it does not additionally bind the wildcard addresses.
+`-nolisten tcp` after `--listen` still disables TCP. `-listen tcp` refuses to
+start without a `-auth` file containing a usable MIT-MAGIC-COOKIE-1, because
+the alternative would be an unauthenticated X server on the network.
 
 **Over TCP the cookie is the entire boundary.** `xhost` entries never admit a
 TCP client: `xhost +somehost` and even `xhost +` let no one in without the
@@ -354,8 +363,8 @@ DISPLAY=192.168.1.10:7 xterm
 ```
 
 Two traps worth knowing. `xauth add hostname:7` may store an **IPv6** entry if
-the name resolves to IPv6 first, and yserver's listener is IPv4-only, so use
-the IPv4 address literal on both sides. And a loopback connection is different
+the name resolves to IPv6 first, so with `--listen 127.0.0.1` use the IPv4
+address literal on both sides. And a loopback connection is different
 from a remote one: xtrans rewrites `127.0.0.1` to a local entry before looking
 up the cookie, so an ordinary `:7` cookie works for `127.0.0.1:7` and tells you
 nothing about whether a genuinely remote client will authenticate.

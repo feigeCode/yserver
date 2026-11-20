@@ -6,7 +6,7 @@ yserver - X11 server for KMS/DRM on Linux, FreeBSD and OpenBSD
 
 # SYNOPSIS
 
-*yserver* [:_display_] [vt_N_] [-auth _file_] [-displayfd _fd_] [-layout _layout_] [-listen _protocol_] [-nolisten _protocol_] [-noreset|-reset|-terminate] [-query _host_|-indirect _host_|-broadcast] [-port _n_] [-from _address_] [-class _string_] [-displayID _string_] [-once] [--vrr [all]] [--version]
+*yserver* [:_display_] [vt_N_] [-auth _file_] [-displayfd _fd_] [-layout _layout_] [--listen _address_] [-listen _protocol_] [-nolisten _protocol_] [-noreset|-reset|-terminate] [-query _host_|-indirect _host_|-broadcast] [-port _n_] [-from _address_] [-class _string_] [-displayID _string_] [-once] [--vrr [all]] [--version]
 
 # DESCRIPTION
 
@@ -76,20 +76,25 @@ entries say so. *--version* reports what this binary was built with.
 	so *-listen tcp -nolisten tcp* leaves TCP disabled.
 
 	TCP is *disabled by default*, as on a modern *Xorg*(1) build. With
-	*-listen tcp* the server binds *0.0.0.0* on port 6000 plus the display
-	number — every interface, not just loopback.
+	*-listen tcp* the server binds *0.0.0.0* and *[::]* on port 6000 plus
+	the display number — every interface, not just loopback.
 
-	*-listen tcp* also needs a binary built with the *tcp-transport*
-	feature. A build without it exits at startup with a message naming the
-	feature, rather than coming up silently on the unix socket alone.
-	*-nolisten tcp* is accepted either way.
+*--listen* _address_
+	Bind TCP only to the given IPv4 or IPv6 address instead of the wildcard
+	listeners. This also enables TCP, unless a later *-nolisten tcp*
+	disables it. Use *--listen 127.0.0.1* for a local IPv4 sidecar or
+	*--listen ::1* for IPv6-only loopback. Authentication is still required.
 
-	*-listen tcp* requires *-auth* with a usable MIT-MAGIC-COOKIE-1 file
-	and refuses to start without one, unless an XDMCP option supplies
-	the credential instead. Read the warning under *SECURITY* before
-	using it.
+Both *--listen* and *-listen tcp* also need a binary built with the
+*tcp-transport* feature. A build without it exits at startup with a message
+naming the feature, rather than coming up silently on the unix socket alone.
+*-nolisten tcp* is accepted either way.
 
-	*A client that cannot keep up is disconnected.* Output that cannot
+TCP requires *-auth* with a usable MIT-MAGIC-COOKIE-1 file and refuses to
+start without one, unless an XDMCP option supplies the credential instead.
+Read the warning under *SECURITY* before using it.
+
+*A client that cannot keep up is disconnected.* Output that cannot
 	be written is buffered per client, and a client whose backlog grows
 	past 4 MiB is dropped rather than allowed to consume memory without
 	bound. A single large reply is always buffered whole, so this is
@@ -286,9 +291,11 @@ deliberately not documented here; see the project documentation.
 With the default options *yserver* listens on a UNIX socket only, and the
 socket's filesystem permissions are the access control.
 
-*-listen tcp* changes that completely. The server binds *0.0.0.0* — every
-interface — and the *only* thing standing between the network and the display
-is the MIT-MAGIC-COOKIE-1 cookie. *xhost*(1) entries never admit a TCP
+*-listen tcp* changes that completely. By default the server binds *0.0.0.0*
+and *[::]* — every interface — and the *only* thing standing between the
+network and the display is the MIT-MAGIC-COOKIE-1 cookie. *--listen 127.0.0.1*
+or *--listen ::1* limits exposure to that loopback interface but does not
+replace authentication. *xhost*(1) entries never admit a TCP
 client: neither a host entry nor *xhost +* lets anyone in without the cookie,
 unlike Xorg. On the UNIX socket, *xhost* works as usual:
 *xhost +si:localuser:*_user_ admits that user's clients without a cookie,

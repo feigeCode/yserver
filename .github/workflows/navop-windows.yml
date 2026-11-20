@@ -1,0 +1,137 @@
+name: Navop Windows sidecar
+
+on:
+  push:
+    branches: ["navop/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Upstream keeps debug symbols for profiling. Navop ships a sidecar, so the
+  # package must be measured without them rather than quoting the debug build.
+  CARGO_PROFILE_RELEASE_DEBUG: "0"
+  CARGO_PROFILE_RELEASE_STRIP: symbols
+
+jobs:
+  xkb-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install meson
+        run: sudo apt-get update && sudo apt-get install -y meson ninja-build
+      - name: Build the pinned XKB data
+        run: sh tools/windows/build-xkb-data.sh target/xkb-data
+      - uses: actions/upload-artifact@v7
+        with:
+          name: navop-xkb-data
+          path: target/xkb-data
+          if-no-files-found: error
+
+  windows:
+    needs: xkb-data
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    env:
+      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}\vcpkg-cache,readwrite
+      VCPKG_COMMIT: 9eec002df1cd109f8f104cd966a763daf9751489
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch vcpkg
+        shell: pwsh
+        run: |
+          $root = "$env:RUNNER_TEMP\vcpkg"
+          git init --quiet $root
+          git -C $root fetch --quiet --depth 1 https://github.com/microsoft/vcpkg $env:VCPKG_COMMIT
+          if ($LASTEXITCODE -ne 0) { throw 'vcpkg fetch failed' }
+          git -C $root checkout --quiet FETCH_HEAD
+          & "$root\bootstrap-vcpkg.bat" -disableMetrics
+          if ($LASTEXITCODE -ne 0) { throw 'vcpkg bootstrap failed' }
+          "VCPKG_ROOT=$root" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Force vcpkg-cache | Out-Null
+      - name: Restore vcpkg packages
+        id: vcpkg-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: vcpkg-cache
+          key: navop-vcpkg-v1-${{ matrix.target }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('tools/windows/vcpkg-*/**', 'tools/windows/build-env.ps1') }}
+          restore-keys: navop-vcpkg-v1-${{ matrix.target }}-
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          components: clippy
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Cache glslc
+        uses: actions/cache@v6
+        with:
+          path: target/tools
+          key: navop-glslc-${{ matrix.os }}-${{ hashFiles('tools/windows/build-env.ps1') }}
+      - name: Install the C libraries and glslc
+        shell: pwsh
+        run: tools/windows/build-env.ps1 -Target ${{ matrix.target }}
+      - name: Save vcpkg packages
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: vcpkg-cache
+          key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+      - uses: actions/download-artifact@v8
+        with:
+          name: navop-xkb-data
+          path: target/xkb-data
+      - name: Build the stripped portable zip
+        id: package
+        shell: pwsh
+        run: tools/windows/package.ps1 -Target ${{ matrix.target }} -XkbData target/xkb-data
+      - name: Check version and measure the actual payload
+        id: sizes
+        shell: pwsh
+        env:
+          ZIP_PATH: ${{ steps.package.outputs.zip }}
+        run: |
+          $zip = Get-Item $env:ZIP_PATH
+          $stage = Join-Path $zip.DirectoryName $zip.BaseName
+          $exe = Get-Item "$stage\yserver.exe"
+          $xauth = Get-Item "$stage\xauth.exe"
+          & $exe.FullName --version
+          if ($LASTEXITCODE -ne 0) { throw 'yserver --version failed' }
+          $xkbBytes = (Get-ChildItem "$stage\xkb" -Recurse -File | Measure-Object Length -Sum).Sum
+          $payloadBytes = (Get-ChildItem $stage -Recurse -File | Measure-Object Length -Sum).Sum
+          $sha256 = (Get-FileHash $zip.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "yserver.exe bytes: $($exe.Length)"
+          Write-Host "xauth.exe bytes: $($xauth.Length)"
+          Write-Host "xkb bytes: $xkbBytes"
+          Write-Host "uncompressed payload bytes: $payloadBytes"
+          Write-Host "zip bytes: $($zip.Length)"
+          Write-Host "zip sha256: $sha256"
+          @(
+            '## Windows sidecar size'
+            ''
+            '| Item | Bytes | MiB |'
+            '| --- | ---: | ---: |'
+            "| yserver.exe | $($exe.Length) | $('{0:N2}' -f ($exe.Length / 1MB)) |"
+            "| xauth.exe | $($xauth.Length) | $('{0:N2}' -f ($xauth.Length / 1MB)) |"
+            "| XKB data | $xkbBytes | $('{0:N2}' -f ($xkbBytes / 1MB)) |"
+            "| Complete uncompressed payload | $payloadBytes | $('{0:N2}' -f ($payloadBytes / 1MB)) |"
+            "| Zip | $($zip.Length) | $('{0:N2}' -f ($zip.Length / 1MB)) |"
+            ''
+            "SHA256: ``$sha256``"
+          ) | Add-Content $env:GITHUB_STEP_SUMMARY
+          "zip_sha256=$sha256" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.package.outputs.zip }}
+          archive: false
+          if-no-files-found: error

@@ -125,6 +125,9 @@ pub struct LaunchOptions {
     /// Off by default, matching Xorg's no-listen list, except on Windows,
     /// where TCP is the only transport.
     pub tcp_listen: bool,
+    /// `--listen IP`: bind only this address instead of the wildcard IPv4 and
+    /// IPv6 listeners. Primarily for an embedded sidecar using `127.0.0.1`.
+    pub tcp_listen_address: Option<std::net::IpAddr>,
     /// `--version` / `-version` — print version + git commit and exit
     /// (handled by the binary before `run()`).
     pub show_version: bool,
@@ -336,6 +339,14 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> Result<LaunchOption
             );
         } else if arg == "-layout" {
             o.layout = Some(next_value(&mut it, "-layout")?);
+        } else if arg == "--listen" {
+            let value = next_value(&mut it, "--listen")?;
+            o.tcp_listen_address = Some(value.parse().map_err(|_| {
+                format!("invalid --listen argument: {value} (expected an IPv4 or IPv6 address)")
+            })?);
+            // An explicit address is also an affirmative TCP opt-in on Unix;
+            // a later `-nolisten tcp` still wins, just like `-listen tcp`.
+            o.tcp_listen = true;
         } else if matches!(arg.as_str(), "-listen" | "-nolisten") {
             let transport = next_value(&mut it, &arg)?;
             if transport == "tcp" {
@@ -1079,6 +1090,33 @@ mod tests {
         assert_ne!(enabled, bare);
         assert_eq!(enabled_then_disabled, bare);
         assert_eq!(disabled_then_enabled, enabled);
+    }
+
+    #[test]
+    fn listen_address_is_an_explicit_tcp_opt_in() {
+        let opts = parse(&["--listen", "127.0.0.1"]).unwrap();
+        assert!(opts.tcp_listen);
+        assert_eq!(
+            opts.tcp_listen_address,
+            Some(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST))
+        );
+
+        let opts = parse(&["--listen", "::1"]).unwrap();
+        assert_eq!(
+            opts.tcp_listen_address,
+            Some(std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST))
+        );
+
+        let disabled = parse(&["--listen", "127.0.0.1", "-nolisten", "tcp"]).unwrap();
+        assert!(!disabled.tcp_listen);
+        assert_eq!(
+            parse(&["--listen", "not-an-address"]).unwrap_err(),
+            "invalid --listen argument: not-an-address (expected an IPv4 or IPv6 address)"
+        );
+        assert_eq!(
+            parse(&["--listen"]).unwrap_err(),
+            "--listen requires a value"
+        );
     }
 
     #[test]
