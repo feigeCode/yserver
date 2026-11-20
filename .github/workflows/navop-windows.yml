@@ -89,7 +89,9 @@ jobs:
         # Lint only the crate changed by this branch. Path dependencies still
         # get checked by Cargo, but newest-Clippy lints in v1.9.0's unrelated
         # renderer must not prevent producing the Windows sidecar.
-        run: cargo clippy -p yserver --all-targets --no-deps -- -D warnings
+        # Upstream's Unix-only test modules do not compile on Windows; the
+        # listener tests run on Unix and the Windows executable is smoke-tested.
+        run: cargo clippy -p yserver --lib --bins --no-deps -- -D warnings
       - uses: actions/download-artifact@v8
         with:
           name: navop-xkb-data
