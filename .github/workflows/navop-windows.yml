@@ -86,10 +86,10 @@ jobs:
           path: vcpkg-cache
           key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
       - name: Clippy
-        # v1.9.0's platform renderer predates the newest Clippy lints. Check
-        # the crate changed by this branch without blocking the sidecar build
-        # on unrelated, platform-independent renderer code.
-        run: cargo clippy -p yserver --all-targets -- -D warnings
+        # Lint only the crate changed by this branch. Path dependencies still
+        # get checked by Cargo, but newest-Clippy lints in v1.9.0's unrelated
+        # renderer must not prevent producing the Windows sidecar.
+        run: cargo clippy -p yserver --all-targets --no-deps -- -D warnings
       - uses: actions/download-artifact@v8
         with:
           name: navop-xkb-data
