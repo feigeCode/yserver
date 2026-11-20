@@ -10,6 +10,9 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  # setup-rust-toolchain sets this to deny. v1.9.0 has platform-specific
+  # unused-dependency manifest warnings; Rust/Clippy warnings stay fatal below.
+  CARGO_BUILD_WARNINGS: warn
   # Upstream keeps debug symbols for profiling. Navop ships a sidecar, so the
   # package must be measured without them rather than quoting the debug build.
   CARGO_PROFILE_RELEASE_DEBUG: "0"
