@@ -1,0 +1,128 @@
+name: Navop macOS sidecar
+
+on:
+  push:
+    branches: ["navop/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # setup-rust-toolchain 默认把构建警告提升为错误；这里保留 Cargo 原有行为，
+  # Rust/Clippy 检查仍由现有 CI 负责。
+  CARGO_BUILD_WARNINGS: warn
+  # sidecar 不携带 profiling 调试符号，产物大小按实际发布内容统计。
+  CARGO_PROFILE_RELEASE_DEBUG: "0"
+  CARGO_PROFILE_RELEASE_STRIP: symbols
+
+jobs:
+  macos:
+    # 此任务只构建和检查包结构；macOS 15 不能验证 KosmicKrisp 的 GUI 运行。
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - name: 安装构建依赖
+        run: brew install mesa vulkan-loader shaderc libxkbcommon fontconfig freetype pkgconf
+      - name: 安装 Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          toolchain: stable
+          target: aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: 缓存固定版本的官方 bottle
+        uses: actions/cache@v6
+        with:
+          path: target/navop-macos-bottle-cache
+          key: navop-macos-bottles-v1-${{ hashFiles('script/navop-macos-bottles.json') }}
+      - name: 构建并打包 Apple Silicon sidecar
+        id: package
+        run: |
+          python3 -m py_compile script/package-navop-macos.py
+          python3 script/package-navop-macos.py \
+            --build \
+            --homebrew-prefix "$(brew --prefix)" \
+            --package-version 1.9.0-navop.2 \
+            --output-dir target/dist
+      - name: 检查版本、Mach-O、签名和 zip 结构
+        env:
+          ZIP_PATH: ${{ steps.package.outputs.zip }}
+          STAGE_PATH: ${{ steps.package.outputs.stage }}
+        run: |
+          set -euo pipefail
+          "$STAGE_PATH/yserver" --version
+          auth_file="$(mktemp "${RUNNER_TEMP}/yserver-xauth.XXXXXX")"
+          XAUTHORITY="$auth_file" "$STAGE_PATH/yserver-xauth" list
+          for binary in "$STAGE_PATH/yserver" "$STAGE_PATH/yserver-xauth" "$STAGE_PATH"/lib/*.dylib; do
+            echo "== $binary =="
+            otool -L "$binary"
+            codesign --verify --strict "$binary"
+          done
+          otool -l "$STAGE_PATH/yserver" | grep '@executable_path/lib'
+          python3 - "$ZIP_PATH" "$STAGE_PATH" <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import re
+          import subprocess
+          import sys
+          import zipfile
+
+          archive_path = Path(sys.argv[1])
+          stage = Path(sys.argv[2])
+          root = stage.name
+          required = {
+              "yserver",
+              "yserver-xauth",
+              "lib/libvulkan.1.dylib",
+              "lib/libvulkan_kosmickrisp.dylib",
+              "icd.d/kosmickrisp_mesa_icd.aarch64.json",
+              "xkb/rules/evdev",
+              "licenses/runtime.json",
+              "licenses/rust-crates.txt",
+          }
+          with zipfile.ZipFile(archive_path) as archive:
+              assert archive.testzip() is None, "zip CRC 校验失败"
+              names = set(archive.namelist())
+              assert all(PurePosixPath(name).parts[0] == root for name in names)
+              missing = sorted(f"{root}/{name}" for name in required if f"{root}/{name}" not in names)
+              assert not missing, f"zip 缺少：{missing}"
+              icd = json.loads(archive.read(f"{root}/icd.d/kosmickrisp_mesa_icd.aarch64.json"))
+              assert icd["ICD"]["library_path"] == "@@YSERVER_ROOT@@/lib/libvulkan_kosmickrisp.dylib"
+
+          binaries = [stage / "yserver", stage / "yserver-xauth", *sorted((stage / "lib").glob("*.dylib"))]
+          for binary in binaries:
+              output = subprocess.check_output(["otool", "-L", str(binary)], text=True)
+              for line in output.splitlines()[1:]:
+                  dependency = line.strip().split(" (", 1)[0]
+                  if not dependency.startswith(("/usr/lib/", "/System/Library/")):
+                      assert dependency.startswith("@rpath/"), f"{binary}: 非便携依赖 {dependency}"
+                      assert (stage / "lib" / Path(dependency).name).is_file()
+          rust_licenses = (stage / "licenses/rust-crates.txt").read_text(encoding="utf-8")
+          assert "objc2" in rust_licenses, "macOS Rust 许可证图缺少 objc2"
+          assert not re.search(r"^windows-sys ", rust_licenses, re.MULTILINE), "误用了 Windows crate 图"
+
+          sha256 = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+          payload = sum(path.stat().st_size for path in stage.rglob("*") if path.is_file())
+          summary = [
+              "## macOS Apple Silicon sidecar",
+              "",
+              f"- yserver：`{(stage / 'yserver').stat().st_size}` bytes",
+              f"- yserver-xauth：`{(stage / 'yserver-xauth').stat().st_size}` bytes",
+              f"- 未压缩载荷：`{payload}` bytes",
+              f"- zip：`{archive_path.stat().st_size}` bytes",
+              f"- SHA-256：`{sha256}`",
+              "",
+              "仅完成 --version、Mach-O、签名和 zip 结构检查；未在 macOS 15 上验证 GUI/KosmicKrisp。",
+          ]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write("\n".join(summary) + "\n")
+          PY
+      - uses: actions/upload-artifact@v7
+        with:
+          name: navop-yserver-macos-aarch64
+          path: ${{ steps.package.outputs.zip }}
+          archive: false
+          if-no-files-found: error

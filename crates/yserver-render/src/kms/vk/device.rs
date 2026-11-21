@@ -1763,17 +1763,25 @@ fn load_entry() -> Result<ash::Entry, ash::LoadingError> {
     let default = unsafe { ash::Entry::load() };
     #[cfg(target_os = "macos")]
     if default.is_err() {
-        for path in [
-            "/opt/homebrew/lib/libvulkan.1.dylib",
-            "/usr/local/lib/libvulkan.1.dylib",
-        ] {
-            if let Ok(entry) = unsafe { ash::Entry::load_from(path) } {
+        let bundled = std::env::current_exe().ok().and_then(|path| {
+            path.parent()
+                .map(|parent| parent.join("lib/libvulkan.1.dylib"))
+        });
+        for path in bundled
+            .into_iter()
+            .chain(std::env::var_os("YSERVER_VULKAN_LOADER").map(Into::into))
+            .chain([
+                "/opt/homebrew/lib/libvulkan.1.dylib".into(),
+                "/usr/local/lib/libvulkan.1.dylib".into(),
+            ])
+        {
+            if let Ok(entry) = unsafe { ash::Entry::load_from(&path) } {
                 return Ok(entry);
             }
         }
         log::error!(
-            "vulkan: no loader in the default search path, /opt/homebrew/lib or /usr/local/lib; \
-             `brew install vulkan-loader`"
+            "vulkan: no loader beside the executable, in YSERVER_VULKAN_LOADER, \
+             the default search path, /opt/homebrew/lib or /usr/local/lib"
         );
     }
     default

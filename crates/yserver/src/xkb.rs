@@ -1,6 +1,6 @@
 //! Where the XKB data comes from. libxkbcommon's compiled-in root is a path
 //! on the machine that built it, so a portable install ships the data in an
-//! `xkb` directory next to `yserver.exe`.
+//! `xkb` directory next to the yserver executable.
 
 use std::path::PathBuf;
 

@@ -256,6 +256,10 @@ just macos-run 2 1600x1000     # display, geometry (positional)
 just macos-bundle              # builds target/yserver.app
 ```
 
+Navop 的 Apple Silicon 便携 sidecar 构建、固定 bottle 和打包说明见
+[`docs/navop-macos-packaging.md`](docs/navop-macos-packaging.md)；它与下面的
+开发用 app bundle 是两条不同路径。
+
 `target/yserver.app` uses the Homebrew libraries and the KosmicKrisp driver
 from the Homebrew prefix; nothing is bundled. Started from Finder it takes
 the lowest free display from `:1`, shows it in the window title

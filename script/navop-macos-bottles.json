@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "architecture": "aarch64",
+  "bottle_tag": "arm64_golden_gate",
+  "formulae": [
+    {
+      "name": "mesa",
+      "version": "26.3.1",
+      "license": "MIT AND Apache-2.0 AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND HPND AND HPND-sell-variant AND ICU AND MIT-Khronos-old AND SGI-B-2.0 AND LicenseRef-Homebrew-public-domain AND (GPL-1.0-or-later WITH Linux-syscall-note) AND (GPL-2.0-only WITH Linux-syscall-note)",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/mesa/blobs/sha256:e37498b104ea54afb617f3baec61929b5910217e0643d1f72b797c373674a706",
+      "sha256": "e37498b104ea54afb617f3baec61929b5910217e0643d1f72b797c373674a706"
+    },
+    {
+      "name": "vulkan-loader",
+      "version": "1.4.363.0",
+      "license": "Apache-2.0",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/vulkan-loader/blobs/sha256:65ddf6c37607565edcc225cb6b0e7ae3d46b3b0f55e961d35edfad322e72e4bf",
+      "sha256": "65ddf6c37607565edcc225cb6b0e7ae3d46b3b0f55e961d35edfad322e72e4bf"
+    },
+    {
+      "name": "zstd",
+      "version": "1.5.7",
+      "license": "(BSD-3-Clause OR GPL-2.0-only) AND BSD-2-Clause AND MIT",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/zstd/blobs/sha256:7fb4af03304cc4897326168cdcd53290311c5543150f5502a61c3e84b6d62765",
+      "sha256": "7fb4af03304cc4897326168cdcd53290311c5543150f5502a61c3e84b6d62765"
+    },
+    {
+      "name": "libxcb",
+      "version": "1.17.0",
+      "license": "MIT",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/libxcb/blobs/sha256:36791e448c61f28491e742e9150ec78c13c8ef7f734a2a51b024cf189ed08d46",
+      "sha256": "36791e448c61f28491e742e9150ec78c13c8ef7f734a2a51b024cf189ed08d46"
+    },
+    {
+      "name": "libx11",
+      "version": "1.8.14",
+      "license": "MIT",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/libx11/blobs/sha256:f16e804d426ea8b43df43c0a6207a106a342b35275e5c061ec8f89ad032140a1",
+      "sha256": "f16e804d426ea8b43df43c0a6207a106a342b35275e5c061ec8f89ad032140a1"
+    },
+    {
+      "name": "libxau",
+      "version": "1.0.12",
+      "license": "MIT",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/libxau/blobs/sha256:f880b5b3db6ef66ecebc49402c2ed48ffb00e288340f056f077f9f83c82ab3be",
+      "sha256": "f880b5b3db6ef66ecebc49402c2ed48ffb00e288340f056f077f9f83c82ab3be"
+    },
+    {
+      "name": "libxdmcp",
+      "version": "1.1.5",
+      "license": "MIT",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/libxdmcp/blobs/sha256:fb949aa790c6d35e695e74ad7672ddc857538ab6256f83e3a327c78b7ca82027",
+      "sha256": "fb949aa790c6d35e695e74ad7672ddc857538ab6256f83e3a327c78b7ca82027"
+    },
+    {
+      "name": "xcb-util-keysyms",
+      "version": "0.4.1",
+      "license": "X11",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/xcb-util-keysyms/blobs/sha256:5cb22b2679fb2355215fbcc6b68357796a9bda85c1a4863f48bf563c9a8f89c8",
+      "sha256": "5cb22b2679fb2355215fbcc6b68357796a9bda85c1a4863f48bf563c9a8f89c8"
+    },
+    {
+      "name": "spirv-tools",
+      "version": "1.4.363.0",
+      "license": "Apache-2.0",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/spirv-tools/blobs/sha256:be9c608d9d4062e661bf54c48df8eefcda66503655a68bcf251621eb4b4592d3",
+      "sha256": "be9c608d9d4062e661bf54c48df8eefcda66503655a68bcf251621eb4b4592d3"
+    },
+    {
+      "name": "fontconfig",
+      "version": "2.18.4",
+      "license": "HPND-sell-variant AND Unicode-3.0 AND MIT-Modern-Variant AND MIT AND LicenseRef-Homebrew-public-domain",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/fontconfig/blobs/sha256:824ffef57aa041532e77a53bdbe901520024407d24e12db562a7dcc1eb9eaa6f",
+      "sha256": "824ffef57aa041532e77a53bdbe901520024407d24e12db562a7dcc1eb9eaa6f"
+    },
+    {
+      "name": "freetype",
+      "version": "2.15.0",
+      "license": "FTL",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/freetype/blobs/sha256:14bc1768b07e0c28391877d3ead21f66f76fd70fea699ad996a693c01a5f660f",
+      "sha256": "14bc1768b07e0c28391877d3ead21f66f76fd70fea699ad996a693c01a5f660f"
+    },
+    {
+      "name": "libpng",
+      "version": "1.6.59",
+      "license": "libpng-2.0",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/libpng/blobs/sha256:7e04225ac0bc048d2b12c603f678e5fa36459909812f2f1306dbd97af337cdec",
+      "sha256": "7e04225ac0bc048d2b12c603f678e5fa36459909812f2f1306dbd97af337cdec"
+    },
+    {
+      "name": "brotli",
+      "version": "1.2.1",
+      "license": "MIT",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/brotli/blobs/sha256:ba4564da654b3cbc6a143d98194a5c0a4971976d5190c5627ed0b76c5c971b8f",
+      "sha256": "ba4564da654b3cbc6a143d98194a5c0a4971976d5190c5627ed0b76c5c971b8f"
+    },
+    {
+      "name": "gettext",
+      "version": "1.0",
+      "license": "GPL-3.0-or-later AND LGPL-2.1-or-later",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/gettext/blobs/sha256:4db034aa2ae4b1f18d86906707ece14c895198090ad028d2fb1ae4fbeb3ca6fd",
+      "sha256": "4db034aa2ae4b1f18d86906707ece14c895198090ad028d2fb1ae4fbeb3ca6fd"
+    },
+    {
+      "name": "libxkbcommon",
+      "version": "1.13.2",
+      "license": "MIT",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/libxkbcommon/blobs/sha256:12d12eeac781b5f9e7632fadbeb96654982b03793ea5e95e2d3b18c76bcc4076",
+      "sha256": "12d12eeac781b5f9e7632fadbeb96654982b03793ea5e95e2d3b18c76bcc4076"
+    },
+    {
+      "name": "xkeyboard-config",
+      "version": "2.48",
+      "license": "MIT",
+      "tag": "all",
+      "url": "https://ghcr.io/v2/homebrew/core/xkeyboard-config/blobs/sha256:38ecdc9a6c476d429383108b2424d6e160c1bd31f768ae93ad1ae33e57490025",
+      "sha256": "38ecdc9a6c476d429383108b2424d6e160c1bd31f768ae93ad1ae33e57490025"
+    },
+    {
+      "name": "lz4",
+      "version": "1.11.1",
+      "license": "BSD-2-Clause",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/lz4/blobs/sha256:b2422bda202e4a59007a9189493902ac7a75423640081da43de9281a89770d5c",
+      "sha256": "b2422bda202e4a59007a9189493902ac7a75423640081da43de9281a89770d5c"
+    },
+    {
+      "name": "xz",
+      "version": "5.8.4",
+      "license": "0BSD AND GPL-2.0-or-later",
+      "tag": "arm64_golden_gate",
+      "url": "https://ghcr.io/v2/homebrew/core/xz/blobs/sha256:b2b5d6523153be05c20bcc51cd358ea3dd1f4bf893748fdedb779ab508ea63ce",
+      "sha256": "b2b5d6523153be05c20bcc51cd358ea3dd1f4bf893748fdedb779ab508ea63ce"
+    }
+  ]
+}

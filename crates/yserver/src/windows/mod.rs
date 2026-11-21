@@ -16,7 +16,6 @@ mod settings_dialog;
 mod tray;
 mod vulkan;
 mod window;
-pub(crate) mod xkb;
 
 use std::{
     io,

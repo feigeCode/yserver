@@ -73,8 +73,14 @@ pub fn prepare() -> Startup {
     }
     let user_set = ICD_VARS.iter().any(|var| env::var_os(var).is_some());
     if !user_set {
+        let bundled = env::current_exe().ok().and_then(|exe| {
+            let root = exe.parent()?.join("icd.d");
+            let path = root.join(format!("kosmickrisp_mesa_icd.{}.json", env::consts::ARCH));
+            path.is_file().then_some(path)
+        });
         let prefixes = homebrew_prefixes(option_env!("YSERVER_HOMEBREW_PREFIX"));
-        startup.icd = find_icd(&prefixes, env::consts::ARCH, |path| path.is_file());
+        startup.icd =
+            bundled.or_else(|| find_icd(&prefixes, env::consts::ARCH, |path| path.is_file()));
         if let Some(icd) = &startup.icd {
             // SAFETY: `prepare` runs first in `main`, before any thread
             // exists, so nothing reads the environment concurrently.

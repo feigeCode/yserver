@@ -30,6 +30,8 @@ pub mod version;
 mod vt;
 #[cfg(windows)]
 mod windows;
+#[cfg(any(windows, target_os = "macos"))]
+mod xkb;
 
 #[cfg(kms)]
 pub mod vrr_exclusions;
